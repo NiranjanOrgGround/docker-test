@@ -3,9 +3,6 @@ name: ARC Scaleset Creation with Docker Image Check
 on:
   workflow_dispatch:
     inputs:
-      SERVICE_REPO:
-        description: 'Service repository (e.g., owner/service-repo-name)'
-        required: true
       IMAGE_NAME:
         description: 'Docker image name'
         required: true
@@ -23,54 +20,41 @@ jobs:
 
       - name: Checkout service repository
         uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.inputs.SERVICE_REPO }}
-          path: service-repo
 
       - name: Get last commit timestamp of Dockerfile
         id: dockerfile-commit
         run: |
-          COMMIT_TIMESTAMP=$(git -C service-repo log -1 --format="%ct" -- Dockerfile)
-          echo "last_commit_timestamp=$COMMIT_TIMESTAMP" >> $GITHUB_ENV
+          echo "COMMIT_TIMESTAMP=$(git -C $GITHUB_WORKSPACE log -1 --format="%ct" -- Dockerfile)" >> $GITHUB_ENV 
+          echo ${{ env.COMMIT_TIMESTAMP }}
 
       - name: Get last push timestamp of Docker image from GHCR
         id: image-push-timestamp
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          IMAGE_PATH=ghcr.io/${{ github.repository_owner }}/${{ github.event.inputs.IMAGE_NAME }}
-          PUSH_TIMESTAMP=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
-            https://ghcr.io/v2/${{ github.repository_owner }}/${{ github.event.inputs.IMAGE_NAME }}/tags/list \
-            | jq -r '.tags[] | select(. == "latest") | .') 
-          if [ -z "$PUSH_TIMESTAMP" ]; then
-            PUSH_TIMESTAMP=0
-          fi
-          echo "last_push_timestamp=$PUSH_TIMESTAMP" >> $GITHUB_ENV
+          echo "PUSH_TIMESTAMP=$(curl -H "Authorization: token YOUR_GITHUB_TOKEN" "https://api.github.com/orgs/niranjanorgground/packages/container/IMAGE_NAME/versions" | jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M')" >> $GITHUB_ENV
+          echo ${{env.PUSH_TIMESTAMP}}
 
-      - name: Compare timestamps and set Docker tag
+      - name: Compare timestamps and push to registery
         id: set-docker-tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [ "${{ env.last_commit_timestamp }}" -gt "${{ env.last_push_timestamp }}" ]; then
+          if [ "${{ env.COMMIT_TIMESTAMP }}" -gt "${{ env.PUSH_TIMESTAMP }}" ]; then
             echo "Dockerfile has been updated. Building a new image."
             echo "docker_image_tag=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
-            
-            TIMESTAMP_TAG=${{ env.docker_image_tag }}
-            IMAGE_PATH=ghcr.io/${{ github.repository_owner }}/${{ github.event.inputs.IMAGE_NAME }}
-  
-            # Build the Docker image and tag it with both 'latest' and the timestamp
-            docker build -t $IMAGE_PATH:latest -t $IMAGE_PATH:$TIMESTAMP_TAG service-repo/
+
+            docker build -t ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:latest -t ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:$docker_image_tag -f $GITHUB_WORKSPACE/Dockerfile
   
             # Log in to GitHub Container Registry
             echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
   
             # Push both tags to GHCR
-            docker push $IMAGE_PATH:latest
-            docker push $IMAGE_PATH:$TIMESTAMP_TAG
+            docker push ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:latest
+            docker push ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:$docker_image_tag
           else
             echo "No update to Dockerfile. Using latest image."
-            # echo "docker_image_tag=latest" >> $GITHUB_ENV
+            echo "The Dockerfile is last updated on $COMMIT_TIMESTAMP"
           fi
 
       # - name: Log selected Docker tag
