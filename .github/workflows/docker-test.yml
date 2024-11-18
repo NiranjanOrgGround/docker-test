@@ -29,29 +29,53 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PUSH_TIMESTAMP=$(curl -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/orgs/niranjanorgground/packages/container/$IMAGE_NAME/versions" | jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M')
-          echo "PUSH_TIMESTAMP=$PUSH_TIMESTAMP" >> $GITHUB_ENV
+          # Fetch the list of versions from the GitHub Container Registry API
+          response=$(curl -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/orgs/niranjanorgground/packages/container/$IMAGE_NAME/versions")
+          
+          # Output the raw response to check its structure
+          echo "Raw response: $response"
+      
+          # Now we try to extract the creation timestamp
+          PUSH_TIMESTAMP=$(echo $response | jq -r '.[0].created_at' || echo "no_timestamp_found")
+          
+          if [ "$PUSH_TIMESTAMP" = "no_timestamp_found" ]; then
+            echo "Failed to retrieve timestamp, check the response structure"
+          else
+            PUSH_TIMESTAMP=$(echo $PUSH_TIMESTAMP | xargs -I {} date -d {} +'%Y%m%d%H%M')
+            echo "PUSH_TIMESTAMP=$PUSH_TIMESTAMP" >> $GITHUB_ENV
+          fi
+      
           echo $PUSH_TIMESTAMP
 
-      - name: Compare timestamps and push to registry
-        id: set-docker-tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "$COMMIT_TIMESTAMP" -gt "$PUSH_TIMESTAMP" ]; then
-            echo "Dockerfile has been updated. Building a new image."
-            docker_image_tag=$(date +'%Y%m%d%H%M')
-            echo "docker_image_tag=$docker_image_tag" >> $GITHUB_ENV
 
-            docker build -t ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:latest -t ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:$docker_image_tag -f $GITHUB_WORKSPACE/Dockerfile .
+      # - name: Get last push timestamp of Docker image from GHCR
+      #   id: image-push-timestamp
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     PUSH_TIMESTAMP=$(curl -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/orgs/niranjanorgground/packages/container/$IMAGE_NAME/versions" | jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M')
+      #     echo "PUSH_TIMESTAMP=$PUSH_TIMESTAMP" >> $GITHUB_ENV
+      #     echo $PUSH_TIMESTAMP
 
-            # Log in to GitHub Container Registry
-            echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+      # - name: Compare timestamps and push to registry
+      #   id: set-docker-tag
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     if [ "$COMMIT_TIMESTAMP" -gt "$PUSH_TIMESTAMP" ]; then
+      #       echo "Dockerfile has been updated. Building a new image."
+      #       docker_image_tag=$(date +'%Y%m%d%H%M')
+      #       echo "docker_image_tag=$docker_image_tag" >> $GITHUB_ENV
 
-            # Push both tags to GHCR
-            docker push ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:latest
-            docker push ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:$docker_image_tag
-          else
-            echo "No update to Dockerfile. Using latest image."
-            echo "The Dockerfile is last updated on $COMMIT_TIMESTAMP"
-          fi
+      #       docker build -t ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:latest -t ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:$docker_image_tag -f $GITHUB_WORKSPACE/Dockerfile .
+
+      #       # Log in to GitHub Container Registry
+      #       echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+
+      #       # Push both tags to GHCR
+      #       docker push ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:latest
+      #       docker push ghcr.io/$GITHUB_OWNER/$IMAGE_NAME:$docker_image_tag
+      #     else
+      #       echo "No update to Dockerfile. Using latest image."
+      #       echo "The Dockerfile is last updated on $COMMIT_TIMESTAMP"
+      #     fi
