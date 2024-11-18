@@ -55,6 +55,3 @@ jobs:
             echo "No update to Dockerfile. Using latest image."
             echo "The Dockerfile is last updated on $COMMIT_TIMESTAMP"
           fi
-
-    outputs:
-      docker_image_tag: ${{ env.docker_image_tag }}
