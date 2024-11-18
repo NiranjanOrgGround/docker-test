@@ -1,0 +1,107 @@
+name: ARC Scaleset Creation with Docker Image Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      SERVICE_REPO:
+        description: 'Service repository (e.g., owner/service-repo-name)'
+        required: true
+      IMAGE_NAME:
+        description: 'Docker image name'
+        required: true
+
+jobs:
+  check-and-build-docker-image:
+    runs-on: ubuntu-latest
+    outputs:
+      docker_image_tag: ${{ steps.set-docker-tag.outputs.docker_image_tag }}
+
+    steps:
+      # - name: Set up variables
+      #   id: set-docker-tag
+      #   run: echo "docker_image_tag=latest" >> $GITHUB_ENV
+
+      - name: Checkout service repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.inputs.SERVICE_REPO }}
+          path: service-repo
+
+      - name: Get last commit timestamp of Dockerfile
+        id: dockerfile-commit
+        run: |
+          COMMIT_TIMESTAMP=$(git -C service-repo log -1 --format="%ct" -- Dockerfile)
+          echo "last_commit_timestamp=$COMMIT_TIMESTAMP" >> $GITHUB_ENV
+
+      - name: Get last push timestamp of Docker image from GHCR
+        id: image-push-timestamp
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          IMAGE_PATH=ghcr.io/${{ github.repository_owner }}/${{ github.event.inputs.IMAGE_NAME }}
+          PUSH_TIMESTAMP=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+            https://ghcr.io/v2/${{ github.repository_owner }}/${{ github.event.inputs.IMAGE_NAME }}/tags/list \
+            | jq -r '.tags[] | select(. == "latest") | .') 
+          if [ -z "$PUSH_TIMESTAMP" ]; then
+            PUSH_TIMESTAMP=0
+          fi
+          echo "last_push_timestamp=$PUSH_TIMESTAMP" >> $GITHUB_ENV
+
+      - name: Compare timestamps and set Docker tag
+        id: set-docker-tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ env.last_commit_timestamp }}" -gt "${{ env.last_push_timestamp }}" ]; then
+            echo "Dockerfile has been updated. Building a new image."
+            echo "docker_image_tag=$(date +'%Y%m%d%H%M')" >> $GITHUB_ENV
+            
+            TIMESTAMP_TAG=${{ env.docker_image_tag }}
+            IMAGE_PATH=ghcr.io/${{ github.repository_owner }}/${{ github.event.inputs.IMAGE_NAME }}
+  
+            # Build the Docker image and tag it with both 'latest' and the timestamp
+            docker build -t $IMAGE_PATH:latest -t $IMAGE_PATH:$TIMESTAMP_TAG service-repo/
+  
+            # Log in to GitHub Container Registry
+            echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+  
+            # Push both tags to GHCR
+            docker push $IMAGE_PATH:latest
+            docker push $IMAGE_PATH:$TIMESTAMP_TAG
+          else
+            echo "No update to Dockerfile. Using latest image."
+            # echo "docker_image_tag=latest" >> $GITHUB_ENV
+          fi
+
+      # - name: Log selected Docker tag
+      #   run: echo "Using Docker tag: ${{ env.docker_image_tag }}"
+
+      # - name: Build and push Docker image if updated
+      #   if: ${{ env.docker_image_tag != 'latest' }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     TIMESTAMP_TAG=${{ env.docker_image_tag }}
+      #     IMAGE_PATH=ghcr.io/${{ github.repository_owner }}/${{ github.event.inputs.IMAGE_NAME }}
+
+      #     # Build the Docker image and tag it with both 'latest' and the timestamp
+      #     docker build -t $IMAGE_PATH:latest -t $IMAGE_PATH:$TIMESTAMP_TAG service-repo/
+
+      #     # Log in to GitHub Container Registry
+      #     echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
+
+      #     # Push both tags to GHCR
+      #     docker push $IMAGE_PATH:latest
+      #     docker push $IMAGE_PATH:$TIMESTAMP_TAG
+
+  # arc-scaleset-creation:
+  #   runs-on: ubuntu-latest
+  #   needs: check-and-build-docker-image
+
+  #   steps:
+  #     - name: Create ARC scaleset with Docker image
+  #       env:
+  #         DOCKER_IMAGE_TAG: ${{ needs.check-and-build-docker-image.outputs.docker_image_tag }}
+  #       run: |
+  #         # Example command to create ARC scaleset with Docker image as input
+  #         ./create_arc_scaleset.sh --image-tag $DOCKER_IMAGE_TAG
