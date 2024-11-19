@@ -28,7 +28,7 @@ jobs:
         id: image-push-timestamp
         run: |
           # Fetch the list of versions from the GitHub Container Registry API
-          echo "LAST_PUSH_TIMESTAMP=$(curl -s -H "Authorization: token ${{ secrets.GHCR_PAT }}" "https://api.github.com/orgs/niranjanorgground/packages/container/docker-test/versions" | jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M%S')" >> $GUTHUB_ENV
+          echo "LAST_PUSH_TIMESTAMP=$(curl -s -H "Authorization: token ${{ secrets.GHCR_PAT }}" "https://api.github.com/orgs/niranjanorgground/packages/container/${{inputs.IMAGE_NAME}}/versions" | jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
           echo ${{env.LAST_PUSH_TIMESTAMP}}
 
       # - name: Compare timestamps and push to registry
