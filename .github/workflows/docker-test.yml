@@ -27,8 +27,20 @@ jobs:
       - name: Get last push timestamp of Docker image from GHCR
         id: image-push-timestamp
         run: |
-          echo "LAST_PUSH_TIMESTAMP=$(curl -s -H "Authorization: token ${{ secrets.GHCR_PAT }}" "https://api.github.com/orgs/niranjanorgground/packages/container/${{inputs.IMAGE_NAME}}/versions" | jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M%S')" >> $GITHUB_ENV
-          echo ${{env.LAST_PUSH_TIMESTAMP}}
+        
+          # Ensure jq is installed
+          sudo apt-get update && sudo apt-get install -y jq
+      
+          # Fetch the timestamp and convert it
+          LAST_PUSH_TIMESTAMP=$(curl -s -H "Authorization: token ${{ secrets.GHCR_PAT }}" \
+            "https://api.github.com/orgs/niranjanorgground/packages/container/${{ inputs.IMAGE_NAME }}/versions" | \
+            jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M%S')
+      
+          # Set the environment variable for subsequent steps
+          echo "LAST_PUSH_TIMESTAMP=$LAST_PUSH_TIMESTAMP" >> $GITHUB_ENV
+      
+          # Print the timestamp for debugging
+          echo "Last push timestamp: $LAST_PUSH_TIMESTAMP"
 
       # - name: Compare timestamps and push to registry
       #   id: set-docker-tag
