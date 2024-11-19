@@ -20,48 +20,16 @@ jobs:
       - name: Get last commit timestamp of Dockerfile
         id: dockerfile-commit
         run: |
-          COMMIT_TIMESTAMP=$(git -C $GITHUB_WORKSPACE log -1 --format="%ct" -- Dockerfile)
+          COMMIT_TIMESTAMP=$(git -C $(pwd) log -1 --format="%cd" --date=format:'%Y%m%d%H%M' -- Dockerfile)
           echo "COMMIT_TIMESTAMP=$COMMIT_TIMESTAMP" >> $GITHUB_ENV
           echo $COMMIT_TIMESTAMP
 
       - name: Get last push timestamp of Docker image from GHCR
         id: image-push-timestamp
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Fetch the list of versions from the GitHub Container Registry API
-          response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/orgs/niranjanorgground/packages/container/$IMAGE_NAME/versions")
-          
-          # Check for 404 response
-          if echo "$response" | jq -e '.message == "Not Found"' > /dev/null; then
-            echo "Image not found in GitHub Container Registry. Please ensure the image exists and has been pushed."
-            echo "Raw response: $response"
-            echo "PUSH_TIMESTAMP=not_found" >> $GITHUB_ENV
-            exit 1
-          fi
-      
-          # If the image is found, extract the creation timestamp
-          PUSH_TIMESTAMP=$(echo $response | jq -r '.[0].created_at' || echo "no_timestamp_found")
-      
-          if [ "$PUSH_TIMESTAMP" = "no_timestamp_found" ]; then
-            echo "Failed to retrieve timestamp, check the response structure"
-          else
-            # Convert timestamp to desired format
-            PUSH_TIMESTAMP=$(echo $PUSH_TIMESTAMP | xargs -I {} date -d {} +'%Y%m%d%H%M')
-            echo "PUSH_TIMESTAMP=$PUSH_TIMESTAMP" >> $GITHUB_ENV
-          fi
-      
-          echo $PUSH_TIMESTAMP
-
-
-      # - name: Get last push timestamp of Docker image from GHCR
-      #   id: image-push-timestamp
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     PUSH_TIMESTAMP=$(curl -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/orgs/niranjanorgground/packages/container/$IMAGE_NAME/versions" | jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M')
-      #     echo "PUSH_TIMESTAMP=$PUSH_TIMESTAMP" >> $GITHUB_ENV
-      #     echo $PUSH_TIMESTAMP
+          echo "LAST_PUSH_TIMESTAMP=$(curl -s -H "Authorization: token ${{ secrets.GHCR_PAT }}" "https://api.github.com/orgs/niranjanorgground/packages/container/docker-test/versions" | jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M%S')" >> $GUTHUB_ENV
+          echo ${{env.LAST_PUSH_TIMESTAMP}}
 
       # - name: Compare timestamps and push to registry
       #   id: set-docker-tag
