@@ -20,7 +20,7 @@ jobs:
       - name: Get last commit timestamp of Dockerfile
         id: dockerfile-commit
         run: |
-          COMMIT_TIMESTAMP=$(git -C $(pwd) log -1 --format="%cd" --date=format:'%Y%m%d%H%M' -- Dockerfile)
+          COMMIT_TIMESTAMP=$(git -C $(pwd) log -1 --format="%cd" --date=format:'%Y%m%d%H%M%S' -- Dockerfile)
           echo "COMMIT_TIMESTAMP=$COMMIT_TIMESTAMP" >> $GITHUB_ENV
           echo $COMMIT_TIMESTAMP
 
