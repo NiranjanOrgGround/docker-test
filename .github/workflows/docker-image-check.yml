@@ -68,11 +68,11 @@ jobs:
             docker push ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:latest
             docker push ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:$IMAGE_TAG
             
-            echo "✅ Successfully built and pushed new image with tag: $IMAGE_TAG"
+            echo "::notice title = Docker Image Build Status:: ✅ Successfully built and pushed new image with tag: `ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:$IMAGE_TAG`"
             echo "status=updated" >> $GITHUB_OUTPUT
             echo "new_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           else
-            echo "::notice title=Dockerfile Status::🛑 No updates to Dockerfile. Using existing image."
+            echo "::notice title=Dockerfile Status:: 🛑 No updates to Dockerfile. Using existing image."
             echo "status=unchanged" >> $GITHUB_OUTPUT
           fi
 
@@ -84,7 +84,7 @@ jobs:
           echo "- **Image Timestamp**: ${{ steps.image-timestamp.outputs.timestamp }}" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ steps.docker-build.outputs.status }}" == "updated" ]; then
-            echo "- 🚀 **Status**: Dockerfile updated. Built and pushed new image." >> $GITHUB_STEP_SUMMARY
+            echo "- **Status**: 🚀 Dockerfile updated. Built and pushed new image." >> $GITHUB_STEP_SUMMARY
             echo "- **New Image Tag**: \`ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:${{ steps.docker-build.outputs.new_tag }}\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "- **Status**: 🛑 No updates to Dockerfile. Using existing image." >> $GITHUB_STEP_SUMMARY
