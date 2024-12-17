@@ -1,0 +1,38 @@
+name: ARC Scaleset Creation with Docker Image Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      IMAGE_NAME:
+        description: 'Docker image name'
+        required: true
+
+jobs:
+  check-and-build-docker-image:
+    runs-on: ubuntu-latest
+    outputs:
+      docker_image_tag: ${{ steps.docker-operations.outputs.docker_image_tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get Dockerfile timestamp
+        id: dockerfile-timestamp
+        uses: ./.github/actions/get-dockerfile-timestamp
+
+      - name: Get image push timestamp
+        id: image-timestamp
+        uses: ./.github/actions/get-image-timestamp
+        with:
+          image-name: ${{ inputs.IMAGE_NAME }}
+          ghcr-token: ${{ secrets.GHCR_PAT }}
+        
+      - name: Handle Docker operations
+        id: docker-operations
+        uses: ./.github/actions/docker-operations
+        with:
+          image-name: ${{ inputs.IMAGE_NAME }}
+          dockerfile-timestamp: ${{ steps.dockerfile-timestamp.outputs.timestamp }}
+          image-timestamp: ${{ steps.image-timestamp.outputs.timestamp }}
+          ghcr-token: ${{ secrets.GHCR_PAT }}

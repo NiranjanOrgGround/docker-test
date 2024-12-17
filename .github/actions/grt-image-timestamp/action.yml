@@ -1,0 +1,31 @@
+name: 'Get Image Push Timestamp'
+description: 'Retrieves the last push timestamp of Docker image from GHCR'
+
+inputs:
+  image-name:
+    description: 'Name of the Docker image'
+    required: true
+  ghcr-token:
+    description: 'GHCR PAT token'
+    required: true
+
+outputs:
+  timestamp:
+    description: 'Timestamp of last image push'
+    value: ${{ steps.get-timestamp.outputs.timestamp }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install jq
+      shell: bash
+      run: sudo apt-get update && sudo apt-get install -y jq
+
+    - id: get-timestamp
+      shell: bash
+      run: |
+        LAST_PUSH_TIMESTAMP=$(curl -s -H "Authorization: token ${{ inputs.ghcr-token }}" \
+          "https://api.github.com/orgs/niranjanorgground/packages/container/${{ inputs.image-name }}/versions" | \
+          jq -r '.[0].created_at' | xargs -I {} date -d {} +'%Y%m%d%H%M%S')
+        echo "timestamp=$LAST_PUSH_TIMESTAMP" >> $GITHUB_OUTPUT
+        echo "Retrieved image push timestamp: $LAST_PUSH_TIMESTAMP"
