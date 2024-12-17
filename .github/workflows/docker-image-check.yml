@@ -51,7 +51,7 @@ jobs:
           IMAGE_TIMESTAMP: ${{ steps.image-timestamp.outputs.timestamp }}
         run: |
           if [ "${{ steps.dockerfile-timestamp.outputs.timestamp }}" -gt "${{ steps.image-timestamp.outputs.timestamp }}" ]; then
-            echo "🚀 Dockerfile has been updated. Building new image..."
+            echo "::notice title=Build Status::🚀 Dockerfile has been updated. Building new image..."
             
             # Generate new tag using current timestamp
             IMAGE_TAG=$(date +'%Y%m%d%H%M%S')
@@ -69,7 +69,7 @@ jobs:
             docker push ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:latest
             docker push ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:$IMAGE_TAG
             
-            echo "✅ Successfully built and pushed new image with tag: $IMAGE_TAG"
+            echo "::notice title=Build Status::✅ Successfully built and pushed new image with tag: $IMAGE_TAG"
           else
-            echo "🛑 No updates to Dockerfile. Using existing image."
+            echo "::notice title=Build Status::🛑 No updates to Dockerfile. Using existing image."
           fi
