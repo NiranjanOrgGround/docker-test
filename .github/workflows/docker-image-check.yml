@@ -50,7 +50,7 @@ jobs:
           IMAGE_TIMESTAMP: ${{ steps.image-timestamp.outputs.timestamp }}
         run: |
           if [ "${{ steps.dockerfile-timestamp.outputs.timestamp }}" -gt "${{ steps.image-timestamp.outputs.timestamp }}" ]; then
-            echo "::notice title=Build Status::🚀 Dockerfile has been updated. Building new image..."
+            echo "::notice title=Dockerfile Status::🚀 Dockerfile has been updated. Building new image..."
             
             # Generate new tag using current timestamp
             IMAGE_TAG=$(date +'%Y%m%d%H%M%S')
@@ -72,7 +72,7 @@ jobs:
             echo "status=updated" >> $GITHUB_OUTPUT
             echo "new_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           else
-            echo "::notice title=Build Status::🛑 No updates to Dockerfile. Using existing image."
+            echo "::notice title=Dockerfile Status::🛑 No updates to Dockerfile. Using existing image."
             echo "status=unchanged" >> $GITHUB_OUTPUT
           fi
 
