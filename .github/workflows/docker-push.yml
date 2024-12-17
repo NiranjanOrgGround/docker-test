@@ -9,11 +9,13 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
+permissions:
+  contents: read  # To access the repository contents
+  packages: write  # To push to GHCR
+  actions: read  # To allow the workflow to access actions
+
 jobs:
   docker_build_and_push:
-    permissions:
-      contents: read
-      packages: write
     runs-on: ubuntu-latest
     steps:
       - name: checkout the ${{github.repository}} repo
