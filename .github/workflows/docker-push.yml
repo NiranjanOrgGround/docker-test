@@ -11,6 +11,9 @@ env:
 
 jobs:
   docker_build_and_push:
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - name: checkout the ${{github.repository}} repo
@@ -39,6 +42,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: | 
+            ghcr.io/niranjanorgground/docker-test:latest
             ghcr.io/niranjanorgground/docker-test:${{ github.run_id }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           # labels: ${{ steps.meta.outputs.labels }}
