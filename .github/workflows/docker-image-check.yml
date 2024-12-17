@@ -68,7 +68,7 @@ jobs:
             docker push ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:latest
             docker push ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:$IMAGE_TAG
             
-            echo "::notice title = Docker Image Build Status:: ✅ Successfully built and pushed new image with tag: `ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:$IMAGE_TAG`"
+            echo "::notice title=Docker Image Build Status:: ✅ Successfully built and pushed new image with tag: ghcr.io/niranjanorgground/${{ inputs.IMAGE_NAME }}:$IMAGE_TAG"
             echo "status=updated" >> $GITHUB_OUTPUT
             echo "new_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
           else
