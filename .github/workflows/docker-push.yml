@@ -39,7 +39,6 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: | 
-            ghcr.io/niranjanorgground/docker-test:latest
             ghcr.io/niranjanorgground/docker-test:${{ github.run_id }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
-          labels: ${{ steps.meta.outputs.labels }}
+          # labels: ${{ steps.meta.outputs.labels }}
